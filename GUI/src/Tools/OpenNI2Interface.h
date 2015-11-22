@@ -44,6 +44,7 @@ class OpenNI2Interface
         bool getAutoWhiteBalance();
         void getNextFrame();
         int getNumFrames();
+        bool hasMore();
 
         static const int numBuffers = 10;
         ThreadMutexObject<int> latestDepthIndex;
@@ -64,6 +65,7 @@ class OpenNI2Interface
 
                 void onNewFrame(openni::VideoStream& stream)
                 {
+                    // Note: readFrame() hangs on 100% CPU when setSpeed(-1) and there are no more frames.
                     stream.readFrame(&frame);
 
                     lastRgbTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
@@ -103,6 +105,7 @@ class OpenNI2Interface
 
                 void onNewFrame(openni::VideoStream& stream)
                 {
+                    // Note: readFrame() hangs on 100% CPU when setSpeed(-1) and there are no more frames.
                     stream.readFrame(&frame);
 
                     lastDepthTime = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);

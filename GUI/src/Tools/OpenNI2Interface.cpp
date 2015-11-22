@@ -294,3 +294,9 @@ int OpenNI2Interface::getNumFrames()
     }
     return std::numeric_limits<int>::max();
 }
+
+bool OpenNI2Interface::hasMore()
+{
+    return !device.isFile() ? true
+                            : latestDepthIndex.getValue() + 1 < getNumFrames();
+}

@@ -114,7 +114,7 @@ int LiveLogReader::getNumFrames()
 
 bool LiveLogReader::hasMore()
 {
-    return true;
+    return asus->hasMore();
 }
 
 void LiveLogReader::setAuto(bool value)
