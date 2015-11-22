@@ -124,11 +124,6 @@ class OpenNI2Interface
 
                     int lastImageVal = latestRgbIndex.getValue();
 
-                    if(lastImageVal == -1)
-                    {
-                        return;
-                    }
-
                     lastImageVal %= numBuffers;
 
                     memcpy(frameBuffers[bufferIndex].first.second, rgbBuffers[lastImageVal].first, frame.getWidth() * frame.getHeight() * 3);
