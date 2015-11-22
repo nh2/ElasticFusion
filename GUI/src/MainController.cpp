@@ -207,7 +207,7 @@ void MainController::launch()
 
 void MainController::run()
 {
-    while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
+    while(!pangolin::ShouldQuit() && (logReader->hasMore() || !quiet) && !(eFusion->getTick() == end && quiet))
     {
         if(!gui->pause->Get() || pangolin::Pushed(*gui->step))
         {
