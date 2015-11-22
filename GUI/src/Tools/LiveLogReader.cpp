@@ -31,28 +31,20 @@ LiveLogReader::LiveLogReader(std::string file, std::string oniUri, bool flipColo
 
 	decompressionBufferImage = new Bytef[Resolution::getInstance().numPixels() * 3];
 
-    if(!asus->ok())
+    std::cout << "success!" << std::endl;
+
+    std::cout << "Waiting for first frame"; std::cout.flush();
+
+    int lastDepth = asus->latestDepthIndex.getValue();
+
+    do
     {
-        std::cout << "failed!" << std::endl;
-        std::cout << asus->error();
-    }
-    else
-    {
-        std::cout << "success!" << std::endl;
+        usleep(33333);
+        std::cout << "."; std::cout.flush();
+        lastDepth = asus->latestDepthIndex.getValue();
+    } while(lastDepth == -1);
 
-        std::cout << "Waiting for first frame"; std::cout.flush();
-
-        int lastDepth = asus->latestDepthIndex.getValue();
-
-        do
-        {
-            usleep(33333);
-            std::cout << "."; std::cout.flush();
-            lastDepth = asus->latestDepthIndex.getValue();
-        } while(lastDepth == -1);
-
-        std::cout << " got it!" << std::endl;
-    }
+    std::cout << " got it!" << std::endl;
 }
 
 LiveLogReader::~LiveLogReader()

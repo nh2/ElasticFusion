@@ -18,184 +18,131 @@
 
 #include "OpenNI2Interface.h"
 
+static void oni_check(const std::string& operation, openni::Status status)
+{
+    if (status != openni::STATUS_OK)
+    {
+        std::string what = "OpenNI error: " + operation + ": " + openni::OpenNI::getExtendedError();
+        throw std::runtime_error(what);
+    }
+}
+
 OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight, int fps)
  : width(inWidth),
    height(inHeight),
-   fps(fps),
-   initSuccessful(true)
+   fps(fps)
 {
-    //Setup
-    openni::Status rc = openni::STATUS_OK;
-
     const char * deviceURI = oniUri == "" ? openni::ANY_DEVICE : oniUri.c_str();
 
-    rc = openni::OpenNI::initialize();
+    oni_check("initialize", openni::OpenNI::initialize());
 
-    std::string errorString(openni::OpenNI::getExtendedError());
+    oni_check("open", device.open(deviceURI));
 
-    if(errorString.length() > 0)
+    if (device.isFile())
     {
-        errorText.append(errorString);
-        initSuccessful = false;
+        device.getPlaybackControl()->setRepeatEnabled(false);
     }
-    else
+
+    openni::VideoMode depthMode;
+    depthMode.setFps(fps);
+    depthMode.setPixelFormat(openni::PIXEL_FORMAT_DEPTH_1_MM);
+    depthMode.setResolution(width, height);
+
+    openni::VideoMode colorMode;
+    colorMode.setFps(fps);
+    colorMode.setPixelFormat(openni::PIXEL_FORMAT_RGB888);
+    colorMode.setResolution(width, height);
+
+    oni_check("create depth stream", depthStream.create(device, openni::SENSOR_DEPTH));
+    depthStream.setVideoMode(depthMode);
+
+    oni_check("create RGB stream", rgbStream.create(device, openni::SENSOR_COLOR));
+    rgbStream.setVideoMode(colorMode);
+
+    //For printing out
+    formatMap[openni::PIXEL_FORMAT_DEPTH_1_MM] = "1mm";
+    formatMap[openni::PIXEL_FORMAT_DEPTH_100_UM] = "100um";
+    formatMap[openni::PIXEL_FORMAT_SHIFT_9_2] = "Shift 9 2";
+    formatMap[openni::PIXEL_FORMAT_SHIFT_9_3] = "Shift 9 3";
+
+    formatMap[openni::PIXEL_FORMAT_RGB888] = "RGB888";
+    formatMap[openni::PIXEL_FORMAT_YUV422] = "YUV422";
+    formatMap[openni::PIXEL_FORMAT_GRAY8] = "GRAY8";
+    formatMap[openni::PIXEL_FORMAT_GRAY16] = "GRAY16";
+    formatMap[openni::PIXEL_FORMAT_JPEG] = "JPEG";
+
+    assert(findMode(width, height, fps) && "Sorry, mode not supported!");
+
+    latestDepthIndex.assign(-1);
+    latestRgbIndex.assign(-1);
+
+    for(int i = 0; i < numBuffers; i++)
     {
-        rc = device.open(deviceURI);
-        if (rc != openni::STATUS_OK)
-        {
-            errorText.append(openni::OpenNI::getExtendedError());
-            openni::OpenNI::shutdown();
-            initSuccessful = false;
-        }
-        else
-        {
-            if (device.isFile())
-            {
-                device.getPlaybackControl()->setRepeatEnabled(false);
-            }
-
-            openni::VideoMode depthMode;
-            depthMode.setFps(fps);
-            depthMode.setPixelFormat(openni::PIXEL_FORMAT_DEPTH_1_MM);
-            depthMode.setResolution(width, height);
-
-            openni::VideoMode colorMode;
-            colorMode.setFps(fps);
-            colorMode.setPixelFormat(openni::PIXEL_FORMAT_RGB888);
-            colorMode.setResolution(width, height);
-
-            rc = depthStream.create(device, openni::SENSOR_DEPTH);
-            if (rc == openni::STATUS_OK)
-            {
-                depthStream.setVideoMode(depthMode);
-                rc = depthStream.start();
-                if (rc != openni::STATUS_OK)
-                {
-                    errorText.append(openni::OpenNI::getExtendedError());
-                    depthStream.destroy();
-                    initSuccessful = false;
-                }
-            }
-            else
-            {
-                errorText.append(openni::OpenNI::getExtendedError());
-                initSuccessful = false;
-            }
-
-            rc = rgbStream.create(device, openni::SENSOR_COLOR);
-            if (rc == openni::STATUS_OK)
-            {
-                rgbStream.setVideoMode(colorMode);
-                rc = rgbStream.start();
-                if (rc != openni::STATUS_OK)
-                {
-                    errorText.append(openni::OpenNI::getExtendedError());
-                    rgbStream.destroy();
-                    initSuccessful = false;
-                }
-            }
-            else
-            {
-                errorText.append(openni::OpenNI::getExtendedError());
-                initSuccessful = false;
-            }
-
-            if (!depthStream.isValid() || !rgbStream.isValid())
-            {
-                errorText.append(openni::OpenNI::getExtendedError());
-                openni::OpenNI::shutdown();
-                initSuccessful = false;
-            }
-
-            if(initSuccessful)
-            {
-                //For printing out
-                formatMap[openni::PIXEL_FORMAT_DEPTH_1_MM] = "1mm";
-                formatMap[openni::PIXEL_FORMAT_DEPTH_100_UM] = "100um";
-                formatMap[openni::PIXEL_FORMAT_SHIFT_9_2] = "Shift 9 2";
-                formatMap[openni::PIXEL_FORMAT_SHIFT_9_3] = "Shift 9 3";
-
-                formatMap[openni::PIXEL_FORMAT_RGB888] = "RGB888";
-                formatMap[openni::PIXEL_FORMAT_YUV422] = "YUV422";
-                formatMap[openni::PIXEL_FORMAT_GRAY8] = "GRAY8";
-                formatMap[openni::PIXEL_FORMAT_GRAY16] = "GRAY16";
-                formatMap[openni::PIXEL_FORMAT_JPEG] = "JPEG";
-
-                assert(findMode(width, height, fps) && "Sorry, mode not supported!");
-
-                latestDepthIndex.assign(-1);
-                latestRgbIndex.assign(-1);
-
-                for(int i = 0; i < numBuffers; i++)
-                {
-                    uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-                    rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newImage, 0);
-                }
-
-                for(int i = 0; i < numBuffers; i++)
-                {
-                    uint8_t * newDepth = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
-                    uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
-                    frameBuffers[i] = std::pair<std::pair<uint8_t *, uint8_t *>, int64_t>(std::pair<uint8_t *, uint8_t *>(newDepth, newImage), 0);
-                }
-
-                rgbCallback = new RGBCallback(lastRgbTime,
-                                              latestRgbIndex,
-                                              rgbBuffers);
-
-                depthCallback = new DepthCallback(lastDepthTime,
-                                                  latestDepthIndex,
-                                                  latestRgbIndex,
-                                                  rgbBuffers,
-                                                  frameBuffers);
-
-                depthStream.setMirroringEnabled(false);
-                rgbStream.setMirroringEnabled(false);
-
-                device.setDepthColorSyncEnabled(true);
-                device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
-
-                if (!device.isFile())
-                {
-                    setAutoExposure(true);
-                    setAutoWhiteBalance(true);
-                }
-
-                rgbStream.addNewFrameListener(rgbCallback);
-                depthStream.addNewFrameListener(depthCallback);
-            }
-        }
+        uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        rgbBuffers[i] = std::pair<uint8_t *, int64_t>(newImage, 0);
     }
+
+    for(int i = 0; i < numBuffers; i++)
+    {
+        uint8_t * newDepth = (uint8_t *)calloc(width * height * 2, sizeof(uint8_t));
+        uint8_t * newImage = (uint8_t *)calloc(width * height * 3, sizeof(uint8_t));
+        frameBuffers[i] = std::pair<std::pair<uint8_t *, uint8_t *>, int64_t>(std::pair<uint8_t *, uint8_t *>(newDepth, newImage), 0);
+    }
+
+    rgbCallback = new RGBCallback(lastRgbTime,
+                                  latestRgbIndex,
+                                  rgbBuffers);
+
+    depthCallback = new DepthCallback(lastDepthTime,
+                                      latestDepthIndex,
+                                      latestRgbIndex,
+                                      rgbBuffers,
+                                      frameBuffers);
+
+    depthStream.setMirroringEnabled(false);
+    rgbStream.setMirroringEnabled(false);
+
+    device.setDepthColorSyncEnabled(true);
+    device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+
+    if (!device.isFile())
+    {
+        setAutoExposure(true);
+        setAutoWhiteBalance(true);
+    }
+
+    rgbStream.addNewFrameListener(rgbCallback);
+    depthStream.addNewFrameListener(depthCallback);
+
+    oni_check("depth stream start", depthStream.start());
+    oni_check("RGB stream start", rgbStream.start());
 }
 
 OpenNI2Interface::~OpenNI2Interface()
 {
-    if(initSuccessful)
+    rgbStream.removeNewFrameListener(rgbCallback);
+    depthStream.removeNewFrameListener(depthCallback);
+
+    depthStream.stop();
+    rgbStream.stop();
+    depthStream.destroy();
+    rgbStream.destroy();
+    device.close();
+    openni::OpenNI::shutdown();
+
+    for(int i = 0; i < numBuffers; i++)
     {
-        rgbStream.removeNewFrameListener(rgbCallback);
-        depthStream.removeNewFrameListener(depthCallback);
-
-        depthStream.stop();
-        rgbStream.stop();
-        depthStream.destroy();
-        rgbStream.destroy();
-        device.close();
-        openni::OpenNI::shutdown();
-
-        for(int i = 0; i < numBuffers; i++)
-        {
-            free(rgbBuffers[i].first);
-        }
-
-        for(int i = 0; i < numBuffers; i++)
-        {
-            free(frameBuffers[i].first.first);
-            free(frameBuffers[i].first.second);
-        }
-
-        delete rgbCallback;
-        delete depthCallback;
+        free(rgbBuffers[i].first);
     }
+
+    for(int i = 0; i < numBuffers; i++)
+    {
+        free(frameBuffers[i].first.first);
+        free(frameBuffers[i].first.second);
+    }
+
+    delete rgbCallback;
+    delete depthCallback;
 }
 
 bool OpenNI2Interface::findMode(int x, int y, int fps)

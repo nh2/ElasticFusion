@@ -43,17 +43,6 @@ class OpenNI2Interface
         bool getAutoExposure();
         bool getAutoWhiteBalance();
 
-        bool ok()
-        {
-            return initSuccessful;
-        }
-
-        std::string error()
-        {
-            errorText.erase(std::remove_if(errorText.begin(), errorText.end(), &OpenNI2Interface::isTab), errorText.end());
-            return errorText;
-        }
-
         static const int numBuffers = 10;
         ThreadMutexObject<int> latestDepthIndex;
         std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers[numBuffers];
@@ -158,9 +147,6 @@ class OpenNI2Interface
 
         RGBCallback * rgbCallback;
         DepthCallback * depthCallback;
-
-        bool initSuccessful;
-        std::string errorText;
 
         //For removing tabs from OpenNI's error messages
         static bool isTab(char c)
