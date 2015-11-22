@@ -106,8 +106,8 @@ OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight
     depthStream.setMirroringEnabled(false);
     rgbStream.setMirroringEnabled(false);
 
-    device.setDepthColorSyncEnabled(true);
-    device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+    oni_check("setDepthColorSyncEnabled", device.setDepthColorSyncEnabled(true));
+    oni_check("setImageRegistrationMode", device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR));
 
     if (!device.isFile())
     {
