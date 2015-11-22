@@ -62,6 +62,7 @@ The GUI (*ElasticFusion*) can take a bunch of parameters when launching it from 
 * *-rl* : Enable relocalisation.
 * *-fs* : Frame skip if processing a log to simulate real-time.
 * *-q* : Quit when finished a log.
+* *-save-at-quit* : Save .ply file when quitting.
 * *-fo* : Fast odometry (single level pyramid).
 * *-nso* : Disables SO(3) pre-alignment in tracking.
 * *-r* : Rewind and loop log forever. 

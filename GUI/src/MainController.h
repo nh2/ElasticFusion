@@ -69,6 +69,7 @@ class MainController
              reloc,
              frameskip,
              quit,
+             saveAtQuit,
              fastOdom,
              so3,
              rewind,

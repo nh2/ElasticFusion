@@ -94,6 +94,7 @@ MainController::MainController(int argc, char * argv[])
     reloc = Parse::get().arg(argc, argv, "-rl", empty) > -1;
     frameskip = Parse::get().arg(argc, argv, "-fs", empty) > -1;
     quit = Parse::get().arg(argc, argv, "-q", empty) > -1;
+    saveAtQuit = Parse::get().arg(argc, argv, "-save-at-quit", empty) > -1;
     fastOdom = Parse::get().arg(argc, argv, "-fo", empty) > -1;
     rewind = Parse::get().arg(argc, argv, "-r", empty) > -1;
     frameToFrameRGB = Parse::get().arg(argc, argv, "-ftf", empty) > -1;
@@ -549,5 +550,10 @@ void MainController::run()
         }
 
         TOCK("GUI");
+    }
+
+    if(saveAtQuit)
+    {
+        eFusion->savePly();
     }
 }
