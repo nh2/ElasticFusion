@@ -68,7 +68,7 @@ class MainController
              openLoop,
              reloc,
              frameskip,
-             quiet,
+             quit,
              fastOdom,
              so3,
              rewind,
