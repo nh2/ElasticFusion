@@ -109,11 +109,8 @@ OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight
     oni_check("setDepthColorSyncEnabled", device.setDepthColorSyncEnabled(true));
     oni_check("setImageRegistrationMode", device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR));
 
-    if (!device.isFile())
-    {
-        setAutoExposure(true);
-        setAutoWhiteBalance(true);
-    }
+    setAutoExposure(true);
+    setAutoWhiteBalance(true);
 
     // Only add frame callbacks when we're not in "manual mode".
     // If in manual mode, the callbacks are called in `getNextFrame()`
@@ -255,12 +252,18 @@ void OpenNI2Interface::printModes()
 
 void OpenNI2Interface::setAutoExposure(bool value)
 {
-    rgbStream.getCameraSettings()->setAutoExposureEnabled(value);
+    if (!device.isFile())
+    {
+        rgbStream.getCameraSettings()->setAutoExposureEnabled(value);
+    }
 }
 
 void OpenNI2Interface::setAutoWhiteBalance(bool value)
 {
-    rgbStream.getCameraSettings()->setAutoWhiteBalanceEnabled(value);
+    if (!device.isFile())
+    {
+        rgbStream.getCameraSettings()->setAutoWhiteBalanceEnabled(value);
+    }
 }
 
 bool OpenNI2Interface::getAutoExposure()
