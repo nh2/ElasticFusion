@@ -109,7 +109,7 @@ const std::string LiveLogReader::getFile()
 
 int LiveLogReader::getNumFrames()
 {
-    return std::numeric_limits<int>::max();
+    return asus->getNumFrames();
 }
 
 bool LiveLogReader::hasMore()

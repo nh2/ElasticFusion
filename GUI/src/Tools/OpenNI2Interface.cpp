@@ -284,3 +284,13 @@ void OpenNI2Interface::getNextFrame()
     depthCallback->onNewFrame(depthStream);
     rgbCallback->onNewFrame(rgbStream);
 }
+
+int OpenNI2Interface::getNumFrames()
+{
+    if (device.isFile())
+    {
+        assert(device.getPlaybackControl() != NULL);
+        return device.getPlaybackControl()->getNumberOfFrames(depthStream);
+    }
+    return std::numeric_limits<int>::max();
+}

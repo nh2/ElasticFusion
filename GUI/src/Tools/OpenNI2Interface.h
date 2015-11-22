@@ -43,6 +43,7 @@ class OpenNI2Interface
         bool getAutoExposure();
         bool getAutoWhiteBalance();
         void getNextFrame();
+        int getNumFrames();
 
         static const int numBuffers = 10;
         ThreadMutexObject<int> latestDepthIndex;
