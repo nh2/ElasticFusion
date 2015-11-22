@@ -46,6 +46,7 @@ MainController::MainController(int argc, char * argv[])
     }
 
     Parse::get().arg(argc, argv, "-l", logFile);
+    Parse::get().arg(argc, argv, "-oni", oniUri);
 
     if(logFile.length())
     {
@@ -53,7 +54,7 @@ MainController::MainController(int argc, char * argv[])
     }
     else
     {
-        logReader = new LiveLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
+        logReader = new LiveLogReader(logFile, oniUri, Parse::get().arg(argc, argv, "-f", empty) > -1);
 
         good = ((LiveLogReader *)logReader)->asus->ok();
     }

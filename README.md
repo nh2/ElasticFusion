@@ -43,6 +43,7 @@ The GUI (*ElasticFusion*) can take a bunch of parameters when launching it from 
 
 * *-cal <calibration>* : Loads a camera calibration file specified as *fx fy cx cy*.
 * *-l <logfile>* : Processes the specified .klg log file.
+* *-oni <oniFile>* : Processes specified .oni OpenNI2 recording file.
 * *-p <poses>* : Loads ground truth poses to use instead of estimated pose.
 * *-c <confidence>* : Surfel confidence threshold (default *10*).
 * *-d <depth>* : Cutoff distance for depth processing (default *3*m).

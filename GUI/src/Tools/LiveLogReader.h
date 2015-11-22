@@ -32,7 +32,7 @@
 class LiveLogReader : public LogReader
 {
 	public:
-		LiveLogReader(std::string file, bool flipColors);
+		LiveLogReader(std::string file, std::string oniUri, bool flipColors);
 
 		virtual ~LiveLogReader();
 

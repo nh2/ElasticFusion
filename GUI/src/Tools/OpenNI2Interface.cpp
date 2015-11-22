@@ -18,7 +18,7 @@
 
 #include "OpenNI2Interface.h"
 
-OpenNI2Interface::OpenNI2Interface(int inWidth, int inHeight, int fps)
+OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight, int fps)
  : width(inWidth),
    height(inHeight),
    fps(fps),
@@ -27,7 +27,7 @@ OpenNI2Interface::OpenNI2Interface(int inWidth, int inHeight, int fps)
     //Setup
     openni::Status rc = openni::STATUS_OK;
 
-    const char * deviceURI = openni::ANY_DEVICE;
+    const char * deviceURI = oniUri == "" ? openni::ANY_DEVICE : oniUri.c_str();
 
     rc = openni::OpenNI::initialize();
 
@@ -49,6 +49,11 @@ OpenNI2Interface::OpenNI2Interface(int inWidth, int inHeight, int fps)
         }
         else
         {
+            if (device.isFile())
+            {
+                device.getPlaybackControl()->setRepeatEnabled(false);
+            }
+
             openni::VideoMode depthMode;
             depthMode.setFps(fps);
             depthMode.setPixelFormat(openni::PIXEL_FORMAT_DEPTH_1_MM);
@@ -150,8 +155,11 @@ OpenNI2Interface::OpenNI2Interface(int inWidth, int inHeight, int fps)
                 device.setDepthColorSyncEnabled(true);
                 device.setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
 
-                setAutoExposure(true);
-                setAutoWhiteBalance(true);
+                if (!device.isFile())
+                {
+                    setAutoExposure(true);
+                    setAutoWhiteBalance(true);
+                }
 
                 rgbStream.addNewFrameListener(rgbCallback);
                 depthStream.addNewFrameListener(depthCallback);

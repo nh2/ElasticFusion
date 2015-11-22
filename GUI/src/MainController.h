@@ -48,6 +48,7 @@ class MainController
 
         bool iclnuim;
         std::string logFile;
+        std::string oniUri; // an .oni file or "" for real camera
         std::string poseFile;
 
         float confidence,
