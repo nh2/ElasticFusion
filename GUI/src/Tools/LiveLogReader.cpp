@@ -37,6 +37,7 @@ LiveLogReader::LiveLogReader(std::string file, std::string oniUri, bool flipColo
 
     int lastDepth = asus->latestDepthIndex.getValue();
 
+    asus->getNextFrame();
     do
     {
         usleep(33333);
@@ -58,6 +59,8 @@ LiveLogReader::~LiveLogReader()
 
 void LiveLogReader::getNext()
 {
+    asus->getNextFrame();
+
     int lastDepth = asus->latestDepthIndex.getValue();
 
     assert(lastDepth != -1);

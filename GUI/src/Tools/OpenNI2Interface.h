@@ -42,6 +42,7 @@ class OpenNI2Interface
         void setAutoWhiteBalance(bool value);
         bool getAutoExposure();
         bool getAutoWhiteBalance();
+        void getNextFrame();
 
         static const int numBuffers = 10;
         ThreadMutexObject<int> latestDepthIndex;
@@ -144,6 +145,11 @@ class OpenNI2Interface
 
         ThreadMutexObject<int> latestRgbIndex;
         std::pair<uint8_t *, int64_t> rgbBuffers[numBuffers];
+
+        // Only add frame listeners when we're not in "manual mode".
+        // If in manual mode, the callbacks are called in `getNextFrame()`
+        // instead.
+        bool useOpenNIListeners;
 
         RGBCallback * rgbCallback;
         DepthCallback * depthCallback;

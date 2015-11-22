@@ -30,7 +30,8 @@ static void oni_check(const std::string& operation, openni::Status status)
 OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight, int fps)
  : width(inWidth),
    height(inHeight),
-   fps(fps)
+   fps(fps),
+   useOpenNIListeners(true)
 {
     const char * deviceURI = oniUri == "" ? openni::ANY_DEVICE : oniUri.c_str();
 
@@ -40,7 +41,10 @@ OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight
 
     if (device.isFile())
     {
+        assert(device.getPlaybackControl() != NULL);
         device.getPlaybackControl()->setRepeatEnabled(false);
+        // Set the playback in a manual mode i.e. read a frame whenever the application requests it
+        device.getPlaybackControl()->setSpeed(-1);
     }
 
     openni::VideoMode depthMode;
@@ -111,8 +115,23 @@ OpenNI2Interface::OpenNI2Interface(std::string oniUri, int inWidth, int inHeight
         setAutoWhiteBalance(true);
     }
 
-    rgbStream.addNewFrameListener(rgbCallback);
-    depthStream.addNewFrameListener(depthCallback);
+    // Only add frame callbacks when we're not in "manual mode".
+    // If in manual mode, the callbacks are called in `getNextFrame()`
+    // instead.
+    if (device.isFile())
+    {
+        assert(device.getPlaybackControl() != NULL);
+        if (device.getPlaybackControl()->getSpeed() == -1)
+        {
+            useOpenNIListeners = false;
+        }
+    }
+
+    if (useOpenNIListeners)
+    {
+        rgbStream.addNewFrameListener(rgbCallback);
+        depthStream.addNewFrameListener(depthCallback);
+    }
 
     oni_check("depth stream start", depthStream.start());
     oni_check("RGB stream start", rgbStream.start());
@@ -252,4 +271,16 @@ bool OpenNI2Interface::getAutoExposure()
 bool OpenNI2Interface::getAutoWhiteBalance()
 {
     return rgbStream.getCameraSettings()->getAutoWhiteBalanceEnabled();
+}
+
+void OpenNI2Interface::getNextFrame()
+{
+    if (useOpenNIListeners)
+    {
+        // Nothing to do.
+        return;
+    }
+
+    depthCallback->onNewFrame(depthStream);
+    rgbCallback->onNewFrame(rgbStream);
 }
