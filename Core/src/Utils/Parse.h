@@ -45,8 +45,6 @@ class Parse
 
         std::string shaderDir() const;
 
-        std::string baseDir() const;
-
     private:
         Parse();
 

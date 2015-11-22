@@ -109,7 +109,7 @@ void LiveLogReader::getNext()
 
 const std::string LiveLogReader::getFile()
 {
-    return Parse::get().baseDir().append("live");
+    return "live";
 }
 
 int LiveLogReader::getNumFrames()

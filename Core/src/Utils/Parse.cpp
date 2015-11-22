@@ -68,19 +68,6 @@ std::string Parse::shaderDir() const
     return currentVal;
 }
 
-std::string Parse::baseDir() const
-{
-    char buf[256];
-    int length = readlink("/proc/self/exe", buf, sizeof(buf));
-
-    std::string currentVal;
-    currentVal.append((char *)&buf, length);
-
-    currentVal = currentVal.substr(0, currentVal.rfind("/build/"));
-
-    return currentVal;
-}
-
 int Parse::findArg(int argc, char** argv, const char* argument_name) const
 {
     for(int i = 1; i < argc; ++i)
