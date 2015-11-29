@@ -290,16 +290,24 @@ void OpenNI2Interface::getNextFrame()
 
 int OpenNI2Interface::getNumFrames()
 {
+    int numDepthFrames = std::numeric_limits<int>::max();
+    int numRGBFrames = std::numeric_limits<int>::max();
     if (device.isFile())
     {
         assert(device.getPlaybackControl() != NULL);
-        return device.getPlaybackControl()->getNumberOfFrames(depthStream);
+        numDepthFrames = device.getPlaybackControl()->getNumberOfFrames(depthStream);
+        numRGBFrames = device.getPlaybackControl()->getNumberOfFrames(rgbStream);
     }
-    return std::numeric_limits<int>::max();
+    return std::min(numDepthFrames, numRGBFrames);
 }
 
 bool OpenNI2Interface::hasMore()
 {
-    return !device.isFile() ? true
-                            : latestDepthIndex.getValue() + 1 < getNumFrames();
+    std::cout << "hasMore(): " << std::max(latestDepthIndex.getValue(), latestRgbIndex.getValue()) + 1 << " / " << getNumFrames() << std::endl;
+    if (device.isFile())
+    {
+        return std::max(latestDepthIndex.getValue(), latestRgbIndex.getValue()) + 1 < getNumFrames();
+    } else {
+        return true;
+    }
 }
