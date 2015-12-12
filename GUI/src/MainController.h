@@ -22,6 +22,7 @@
 #include "Tools/GUI.h"
 #include "Tools/GroundTruthOdometry.h"
 #include "Tools/RawLogReader.h"
+#include "Tools/OniLogReader.h"
 #include "Tools/LiveLogReader.h"
 
 #ifndef MAINCONTROLLER_H_

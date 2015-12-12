@@ -52,6 +52,10 @@ MainController::MainController(int argc, char * argv[])
     {
         logReader = new RawLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
     }
+    else if(oniUri.length())
+    {
+        logReader = new OniLogReader(oniUri, Parse::get().arg(argc, argv, "-f", empty) > -1);
+    }
     else
     {
         logReader = new LiveLogReader(logFile, oniUri, Parse::get().arg(argc, argv, "-f", empty) > -1);
