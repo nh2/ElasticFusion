@@ -721,6 +721,8 @@ void ElasticFusion::savePly()
     std::string filename = saveFilename;
     filename.append(".ply");
 
+    std::cout << "Saving model to " << filename << std::endl;
+
     // Open file
     std::ofstream fs;
     fs.open (filename.c_str ());
