@@ -54,6 +54,11 @@ class OniLogReader : public LogReader
         openni::Device oni_device;
         openni::VideoStream depth_stream;
         openni::VideoStream rgb_stream;
+        openni::VideoFrameRef depth_frame;
+        openni::VideoFrameRef rgb_frame;
+        int numFramesDepth;
+        int numFramesRGB;
+        bool finished;
 };
 
 #endif /* ONILOGREADER_H_ */

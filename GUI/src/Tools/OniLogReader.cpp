@@ -32,6 +32,102 @@ static void oni_check(const std::string& operation, openni::Status status)
     }
 }
 
+// Read a combination of depth + RGB frame from the given depth and RGB streams.
+//
+// Takes in the last frame indices that were read to determine whether there is
+// another frame to read; this is important because OpenNI2's `readFrame()`
+// hangs on 100% CPU when `setSpeed(-1)` and there is no more frame to read.
+//
+// This function can deal with skipped frames in the streams.
+// It will also skip depth/RGB frames that cannot form a valid frame combination
+// because their timestamps are too far away (1/fps/2 seconds) from a corresponding
+// RGB/depth frame.
+// If `printSkips` is true, a message will be written to std::cerr in that case.
+//
+// Returns true if a combination of depth + RGB frame was read; false if no
+// further frame combination can be read from the streams.
+static bool getNextDepthAndRGBFrame(
+    openni::VideoStream& depth_stream,
+    openni::VideoStream& rgb_stream,
+    const int numFramesDepth,
+    const int numFramesRGB,
+    const int lastFrameIndexDepth,
+    const int lastFrameIndexRGB,
+    openni::VideoFrameRef& out_depth_frame,
+    openni::VideoFrameRef& out_rgb_frame,
+    bool printSkips)
+{
+
+    // `getFrameIndex()` is is like a frame_number, but a property of the frame itself, starting with 1.
+    // It may not be increasing monotonically because some frames may be missing,
+    // for both real cameras (when the computer was too slow to process) and .oni recordings
+    // (when the computer was too slow to record).
+
+    if (lastFrameIndexDepth == numFramesDepth)
+    {
+        return false;
+    }
+
+    if (lastFrameIndexRGB == numFramesRGB)
+    {
+        return false;
+    }
+
+    // Note: readFrame() hangs on 100% CPU when setSpeed(-1) and there
+    // is no more frame.
+    oni_check("read depth", depth_stream.readFrame(&out_depth_frame));
+    oni_check("read rgb", rgb_stream.readFrame(&out_rgb_frame));
+
+    bool catchUp = true;
+
+    const int64_t fps = 30;
+    const int64_t maxTimeBetweenDepthAndRGB_usecs = 1000000/fps/2;
+
+    while (catchUp)
+    {
+
+        uint64_t frameTimestampDepth = out_depth_frame.getTimestamp();
+        uint64_t frameTimestampRGB = out_rgb_frame.getTimestamp();
+
+        int64_t timeDiff = (int64_t) frameTimestampDepth - (int64_t) frameTimestampRGB;
+
+        int frameIndexDepth = out_depth_frame.getFrameIndex();
+        int frameIndexRGB = out_rgb_frame.getFrameIndex();
+
+        bool depthLagsBehindRGB = timeDiff < -maxTimeBetweenDepthAndRGB_usecs;
+        bool rgbLagsBehindDepth = timeDiff >  maxTimeBetweenDepthAndRGB_usecs;
+        catchUp = depthLagsBehindRGB || rgbLagsBehindDepth;
+
+        if (depthLagsBehindRGB)
+        {
+            if (frameIndexDepth == numFramesDepth)
+            {
+                return false;
+            }
+            if (printSkips)
+            {
+                std::cerr << "Skipping depth frame with index " << frameIndexDepth << " (timeDiff " << timeDiff << ")" << std::endl;
+            }
+            oni_check("read depth", depth_stream.readFrame(&out_depth_frame));
+        }
+        else if (rgbLagsBehindDepth && frameIndexRGB != numFramesRGB)
+        {
+            if (frameIndexRGB == numFramesRGB)
+            {
+                return false;
+            }
+            if (printSkips)
+            {
+                std::cerr << "Skipping colour frame with index " << frameIndexRGB << " (timeDiff " << timeDiff << ")" << std::endl;
+            }
+            oni_check("read rgb", rgb_stream.readFrame(&out_rgb_frame));
+        }
+    }
+    // Depth and colour are reasonably close by
+
+    return true;
+}
+
 OniLogReader::OniLogReader(std::string file, bool flipColors)
  : LogReader(file, flipColors)
 {
@@ -62,8 +158,9 @@ OniLogReader::OniLogReader(std::string file, bool flipColors)
     // These work only if `oni_device.isFile()`.
     oni_device.getPlaybackControl()->setRepeatEnabled(false);
     oni_device.getPlaybackControl()->setSpeed(-1); // Set the playback in a manual mode i.e. read a frame whenever the application requests it
-    int numFramesDepth = oni_device.getPlaybackControl()->getNumberOfFrames(depth_stream);
-    int numFramesRGB = oni_device.getPlaybackControl()->getNumberOfFrames(rgb_stream);
+    numFramesDepth = oni_device.getPlaybackControl()->getNumberOfFrames(depth_stream);
+    numFramesRGB = oni_device.getPlaybackControl()->getNumberOfFrames(rgb_stream);
+    finished = false;
     numFrames = std::min(numFramesDepth, numFramesRGB);
 
     depth_stream.start();
@@ -89,11 +186,38 @@ void OniLogReader::getBack()
 
 void OniLogReader::getNext()
 {
-    openni::VideoFrameRef depth_frame;
-    openni::VideoFrameRef rgb_frame;
+    bool gotNextFrame = getNextDepthAndRGBFrame(
+        depth_stream,
+        rgb_stream,
+        numFramesDepth,
+        numFramesRGB,
+        depth_frame.isValid() ? depth_frame.getFrameIndex() : 0,
+        rgb_frame.isValid() ? rgb_frame.getFrameIndex() : 0,
+        depth_frame,
+        rgb_frame,
+        true);
 
-    oni_check("read depth", depth_stream.readFrame(&depth_frame));
-    oni_check("read rgb", rgb_stream.readFrame(&rgb_frame));
+    if (!gotNextFrame) // end of stream
+    {
+      finished = true;
+      return;
+    }
+
+    int frameIndexDepth = depth_frame.getFrameIndex();
+    int frameIndexRGB = rgb_frame.getFrameIndex();
+
+    uint64_t frameTimestampDepth = depth_frame.getTimestamp();
+    uint64_t frameTimestampRGB = rgb_frame.getTimestamp();
+    int64_t timeDiff = (int64_t) frameTimestampDepth - (int64_t) frameTimestampRGB;
+
+    currentFrame = std::min(frameIndexDepth, frameIndexRGB);
+
+    std::cerr
+      << "Frame " << currentFrame
+      << " (indices: depth " << frameIndexDepth << "/" << numFramesDepth
+      << ", RGB " << frameIndexRGB << "/" << numFramesRGB << ")"
+      << " (times: depth " << frameTimestampDepth << ", RGB " << frameTimestampRGB << ", diff " << timeDiff << ")..."
+      << std::endl;
 
     memcpy(depth, depth_frame.getData(), depthSize);
     memcpy(rgb, rgb_frame.getData(), imageSize);
@@ -118,7 +242,7 @@ int OniLogReader::getNumFrames()
 
 bool OniLogReader::hasMore()
 {
-    return currentFrame + 1 < numFrames;
+    return !finished;
 }
 
 bool OniLogReader::rewound()
